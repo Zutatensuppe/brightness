@@ -1,0 +1,63 @@
+#!/bin/python3
+
+import subprocess
+from sys import argv
+
+secret_tool_attribute = 'Login'
+secret_tool_value = 'UBUNTU'
+
+def read(cmd):
+  child = subprocess.Popen(
+    cmd,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT
+  )
+  return child.stdout.read()
+
+def read_int(cmd) -> int:
+  return int(read(cmd))
+
+def max_brightness():
+  return read_int(['cat', '/sys/class/backlight/intel_backlight/max_brightness'])
+
+def cur_brightness():
+  return read_int(['cat', '/sys/class/backlight/intel_backlight/actual_brightness'])
+
+def pw():
+  return read(['secret-tool', 'lookup', secret_tool_attribute, secret_tool_value])
+
+def set_brightness(val):
+  p = subprocess.Popen(
+    [
+      'sudo', '-S', 'sh', '-c',
+      f'echo {val} | sudo tee /sys/class/backlight/intel_backlight/brightness'
+    ],
+    stdin=subprocess.PIPE
+  )
+  p.communicate(pw())
+
+def brightness_down():
+  bMax = max_brightness()
+  bCur = cur_brightness()
+  bNew = bCur - 500
+  if bNew < 0:
+    bNew = 0
+  set_brightness(bNew)
+
+def brightness_up():
+  bMax = max_brightness()
+  bCur = cur_brightness()
+  bNew = bCur + 500
+  if bNew > bMax:
+    bNew = bMax
+  set_brightness(bNew)
+
+if len(argv) < 2:
+  exit(1)
+
+if argv[1] == 'down':
+  brightness_down()
+elif argv[1] == 'up':
+  brightness_up()
+else:
+  exit(1)
